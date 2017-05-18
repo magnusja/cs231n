@@ -259,6 +259,9 @@ class FullyConnectedNet(object):
             if self.use_batchnorm:
                 current_input, current_cache = affine_batchnorm_relu_forward(current_input, self.params[keyW], 
                     self.params[keyb], self.params[key_gamma], self.params[key_beta], self.bn_params[i])
+            elif self.use_dropout:
+                current_input, current_cache = affine_relu_dropout_forward(current_input, self.params[keyW], 
+                    self.params[keyb], self.dropout_param)
             else:
                 current_input, current_cache = affine_relu_forward(current_input, self.params[keyW], self.params[keyb])
 
@@ -306,6 +309,8 @@ class FullyConnectedNet(object):
 
                 grads[key_gamma] = dgamma 
                 grads[key_beta] = dbeta
+            elif self.use_dropout:
+                affine_dx, affine_dw, affine_db = affine_relu_dropout_backward(affine_dx, cache[i])
             else:
                 affine_dx, affine_dw, affine_db = affine_relu_backward(affine_dx, cache[i])
             grads[keyW] = affine_dw + self.reg * self.params[keyW]
