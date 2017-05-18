@@ -186,6 +186,10 @@ class FullyConnectedNet(object):
 
             self.params['W' + str(i)] = np.random.normal(0, weight_scale, (layer_input_dim, layer_output_dim))
             self.params['b' + str(i)] = np.zeros(layer_output_dim)
+
+            if self.use_batchnorm  and i != self.num_layers - 1:
+                self.params['gamma' + str(i)] = np.ones(layer_output_dim)
+                self.params['beta' + str(i)] = np.zeros(layer_output_dim)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -245,11 +249,19 @@ class FullyConnectedNet(object):
         ############################################################################
         current_input = X
         cache = []
+        current_cache = None
         for i in range(0, self.num_layers - 1):
             keyW = 'W' + str(i)
             keyb = 'b' + str(i)
+            key_gamma = 'gamma' + str(i)
+            key_beta = 'beta' + str(i)
 
-            current_input, current_cache = affine_relu_forward(current_input, self.params[keyW], self.params[keyb])
+            if self.use_batchnorm:
+                current_input, current_cache = affine_batchnorm_relu_forward(current_input, self.params[keyW], 
+                    self.params[keyb], self.params[key_gamma], self.params[key_beta], self.bn_params[i])
+            else:
+                current_input, current_cache = affine_relu_forward(current_input, self.params[keyW], self.params[keyb])
+
             cache.append(current_cache)
 
         keyW = 'W' + str(self.num_layers - 1)
@@ -287,7 +299,15 @@ class FullyConnectedNet(object):
         for i in range(self.num_layers - 2, -1, -1):
             keyW = 'W' + str(i)
             keyb = 'b' + str(i)
-            affine_dx, affine_dw, affine_db = affine_relu_backward(affine_dx, cache[i])
+            key_gamma = 'gamma' + str(i)
+            key_beta = 'beta' + str(i)
+            if self.use_batchnorm:
+                affine_dx, affine_dw, affine_db, dgamma, dbeta = affine_batchnorm_relu_backward(affine_dx, cache[i])
+
+                grads[key_gamma] = dgamma 
+                grads[key_beta] = dbeta
+            else:
+                affine_dx, affine_dw, affine_db = affine_relu_backward(affine_dx, cache[i])
             grads[keyW] = affine_dw + self.reg * self.params[keyW]
             grads[keyb] = affine_db
 

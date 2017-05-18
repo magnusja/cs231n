@@ -173,7 +173,14 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # variance, storing your result in the running_mean and running_var   #
         # variables.                                                          #
         #######################################################################
-        pass
+
+        mean = np.mean(x, axis=0)
+        var = np.var(x, axis=0)
+        normalized_x = (x - mean) / np.sqrt(var + eps)
+        out = gamma * normalized_x + beta
+        cache = (mean, var, gamma, beta, x, normalized_x, eps)
+        running_mean = momentum * running_mean + (1 - momentum) * mean
+        running_var = momentum * running_var + (1 - momentum) * var
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -184,7 +191,7 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # then scale and shift the normalized data using gamma and beta.      #
         # Store the result in the out variable.                               #
         #######################################################################
-        pass
+        out = gamma * ((x - running_mean) / np.sqrt(running_var + eps)) + beta
         #######################################################################
         #                          END OF YOUR CODE                           #
         #######################################################################
@@ -216,11 +223,18 @@ def batchnorm_backward(dout, cache):
     - dbeta: Gradient with respect to shift parameter beta, of shape (D,)
     """
     dx, dgamma, dbeta = None, None, None
+    mean, var, gamma, beta, x, normalized_x, eps = cache
     ###########################################################################
     # TODO: Implement the backward pass for batch normalization. Store the    #
     # results in the dx, dgamma, and dbeta variables.                         #
     ###########################################################################
-    pass
+    N = x.shape[0]
+    dgamma = np.sum(normalized_x * dout, axis=0)
+    dbeta = np.sum(dout, axis=0)
+    dnormalized_x = gamma * dout
+    dmean = np.sum(- 1 / np.sqrt(var + eps) * dnormalized_x, axis=0)
+    dvar = np.sum((mean - x) / (2 * (var + eps) ** (3/2)) * dnormalized_x, axis=0)
+    dx = 1 / np.sqrt(var + eps) * dnormalized_x + dvar * 2.0 / N * (x - mean) + 1.0 / N * dmean
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -242,6 +256,7 @@ def batchnorm_backward_alt(dout, cache):
     Inputs / outputs: Same as batchnorm_backward
     """
     dx, dgamma, dbeta = None, None, None
+    mean, var, gamma, beta, x, normalized_x, eps = cache
     ###########################################################################
     # TODO: Implement the backward pass for batch normalization. Store the    #
     # results in the dx, dgamma, and dbeta variables.                         #
@@ -250,7 +265,14 @@ def batchnorm_backward_alt(dout, cache):
     # should be able to compute gradients with respect to the inputs in a     #
     # single statement; our implementation fits on a single 80-character line.#
     ###########################################################################
-    pass
+    
+    N = x.shape[0]
+    dgamma = np.sum(normalized_x * dout, axis=0)
+    dbeta = np.sum(dout, axis=0)
+    dnormalized_x = gamma * dout
+    dmean = np.sum(- 1 / np.sqrt(var + eps) * dnormalized_x, axis=0)
+    dvar = np.sum((mean - x) / (2 * (var + eps) ** (3/2)) * dnormalized_x, axis=0)
+    dx = 1 / np.sqrt(var + eps) * dnormalized_x + dvar * 2.0 / N * (x - mean) + 1.0 / N * dmean
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
