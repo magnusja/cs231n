@@ -121,7 +121,7 @@ class TwoLayerNet(object):
     grads['W2'] = hidden_layer.T.dot(dscores) + reg * W2
     grads['b2'] = np.sum(dscores, axis=0)
 
-    dhidden_layer = dscores.dot(W2.T)
+    dhidden_layer = dscores
     dhidden_layer[hidden_layer <= 0] = 0
 
     grads['W1'] = X.T.dot(dhidden_layer) + reg * W1
