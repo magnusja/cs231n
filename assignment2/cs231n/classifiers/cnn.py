@@ -55,6 +55,16 @@ class ThreeLayerConvNet(object):
         self.params['b2'] = np.zeros(hidden_dim)
         self.params['W3'] = np.random.normal(0, weight_scale, (hidden_dim, num_classes))
         self.params['b3'] = np.zeros(num_classes)
+
+
+        self.params['gamma1'] = np.ones((num_filters))
+        self.params['beta1'] = np.zeros((num_filters))
+
+        self.params['gamma2'] = np.ones((hidden_dim))
+        self.params['beta2'] = np.zeros((hidden_dim))
+
+        self.bn_params = []
+        self.bn_params = [{'mode': 'train'}, {'mode': 'train'}]
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -72,6 +82,8 @@ class ThreeLayerConvNet(object):
         W1, b1 = self.params['W1'], self.params['b1']
         W2, b2 = self.params['W2'], self.params['b2']
         W3, b3 = self.params['W3'], self.params['b3']
+        beta1, gamma1 = self.params['beta1'], self.params['gamma1']
+        beta2, gamma2 = self.params['beta2'], self.params['gamma2']
 
         # pass conv_param to the forward pass for the convolutional layer
         filter_size = W1.shape[2]
@@ -86,8 +98,9 @@ class ThreeLayerConvNet(object):
         # computing the class scores for X and storing them in the scores          #
         # variable.                                                                #
         ############################################################################
-        conv1_out, conv1_cache = conv_relu_pool_forward(X, W1, b1, conv_param, pool_param)
-        affine_out, affine_cache = affine_relu_forward(conv1_out, W2, b2)
+        conv1_out, conv1_cache = conv_bn_relu_forward(X, W1, b1, gamma1, beta1, conv_param, self.bn_params[0])
+        pool_out, pool_cache = max_pool_forward_fast(conv1_out, pool_param)
+        affine_out, affine_cache = affine_batchnorm_relu_forward(pool_out, W2, b2, gamma2, beta2, self.bn_params[1])
         scores, scores_cache = affine_forward(affine_out, W3, b3)
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -108,12 +121,17 @@ class ThreeLayerConvNet(object):
         affine_dx, affine_dw, affine_db = affine_backward(dscores, scores_cache)
         grads['W3'] = affine_dw
         grads['b3'] = affine_db
-        affine_dx, affine_dw, affine_db = affine_relu_backward(affine_dx, affine_cache)
-        grads['W2'] = affine_dw
-        grads['b2'] = affine_db
-        affine_dx, affine_dw, affine_db = conv_relu_pool_backward(affine_dx, conv1_cache)
-        grads['W1'] = affine_dw
-        grads['b1'] = affine_db
+        dx, dw, db, dgamma, dbeta = affine_batchnorm_relu_backward(affine_dx, affine_cache)
+        grads['W2'] = dw
+        grads['b2'] = db
+        grads['gamma2'] = dgamma
+        grads['beta2'] = dbeta
+        dx = max_pool_backward_fast(dx, pool_cache)
+        dx, dw, db, dgamma, dbeta = conv_bn_relu_backward(dx, conv1_cache)
+        grads['W1'] = dw
+        grads['b1'] = db
+        grads['gamma1'] = dgamma
+        grads['beta1'] = dbeta
 
 
         ############################################################################
